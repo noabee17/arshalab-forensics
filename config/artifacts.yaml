@@ -1,0 +1,119 @@
+artifacts:
+  prefetch:
+    description: "Windows Prefetch files (program execution history)"
+    paths:
+      - "/Windows/Prefetch/*.pf"
+    collector: "TSK"
+    parser: "PECmd"
+    parser_config:
+      executable: "tools/PECmd/PECmd.exe"
+      args:
+        - "-d"
+        - "{input_dir}"
+        - "--csv"
+        - "{output_dir}"
+    output_format: "csv"
+    database_table: "prefetch"
+    capabilities:
+      - "program execution timeline"
+      - "file access patterns"
+      - "volume information"
+
+  eventlog:
+    description: "Windows Event Logs (system events)"
+    paths:
+      - "/Windows/System32/winevt/Logs/*.evtx"
+    collector: "TSK"
+    parser: "EvtxECmd"
+    parser_config:
+      executable: "tools/EvtxeCmd/EvtxECmd.exe"
+      args:
+        - "-d"
+        - "{input_dir}"
+        - "--csv"
+        - "{output_dir}"
+        - "--csvf"
+        - "eventlog.csv"
+    output_format: "csv"
+    database_table: "eventlog"
+    capabilities:
+      - "system events"
+      - "authentication logs"
+      - "error tracking"
+      - "service activity"
+
+  registry:
+    description: "Windows Registry hives"
+    paths:
+      - "/Windows/System32/config/SYSTEM"
+      - "/Windows/System32/config/SOFTWARE"
+      - "/Windows/System32/config/SAM"
+      - "/Windows/System32/config/SECURITY"
+      - "/Users/*/NTUSER.DAT"
+    collector: "TSK"
+    parser: "RECmd"
+    parser_config:
+      executable: "tools/RECmd/RECmd/RECmd.exe"
+      batch_file: "tools/RECmd/RECmd/BatchExamples/Kroll_Batch.reb"
+      args:
+        - "--bn"
+        - "{batch_file}"
+        - "-d"
+        - "{input_dir}"
+        - "--csv"
+        - "{output_dir}"
+    output_format: "csv"
+    database_table: "registry"
+    capabilities:
+      - "system configuration"
+      - "user settings"
+      - "installed software"
+      - "autorun locations"
+
+  browser:
+    description: "Web browser history (Chrome, Edge, Firefox)"
+    paths:
+      - "/Users/*/AppData/Local/*/*/History"
+      - "/Users/*/AppData/Roaming/Mozilla/Firefox/Profiles/*/places.sqlite"
+    collector: "TSK"
+    parser: "Hindsight"
+    parser_config:
+      executable: "tools/hindsight/dist/hindsight.exe"
+      args:
+        - "-i"
+        - "{input}"
+        - "-o"
+        - "{output_dir}"
+        - "-f"
+        - "jsonl"
+    output_format: "jsonl"
+    database_table: "browser_history"
+    capabilities:
+      - "web browsing history"
+      - "visited URLs"
+      - "search queries"
+      - "download history"
+
+  lnk:
+    description: "Windows LNK shortcut files"
+    paths:
+      - "/Users/*/AppData/Roaming/Microsoft/Windows/Recent/*.lnk"
+      - "/Users/*/AppData/Roaming/Microsoft/Office/Recent/*.lnk"
+    collector: "TSK"
+    parser: "LECmd"
+    parser_config:
+      executable: "tools/LECmd/LECmd.exe"
+      args:
+        - "-d"
+        - "{input_dir}"
+        - "--csv"
+        - "{output_dir}"
+        - "--csvf"
+        - "lnk_output.csv"
+    output_format: "csv"
+    database_table: "lnk_files"
+    capabilities:
+      - "recently accessed files"
+      - "file locations"
+      - "access timestamps"
+      - "user activity patterns"

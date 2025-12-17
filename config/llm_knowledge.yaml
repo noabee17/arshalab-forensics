@@ -1,0 +1,87 @@
+forensic_knowledge:
+  investigation_types:
+    program_execution:
+      description: "Determining what programs were run and when"
+      primary_artifacts:
+        - prefetch
+      supporting_artifacts:
+        - registry_run_keys
+      typical_questions:
+        - "what programs ran"
+        - "what was executed"
+        - "program execution"
+        - "applications run"
+      analysis_approach: |
+        1. Start with Prefetch for recent executions
+        2. Check Registry Run keys for startup programs
+        3. Look for anomalies: first-time executions, suspicious paths
+    
+    web_activity:
+      description: "User's web browsing behavior"
+      primary_artifacts:
+        - browser_history
+      supporting_artifacts: []
+      typical_questions:
+        - "websites visited"
+        - "browsing history"
+        - "what did user search"
+        - "downloads"
+      analysis_approach: |
+        1. Extract browser history (Chrome, Edge)
+        2. Identify suspicious domains
+        3. Check for download activity
+    
+    timeline_reconstruction:
+      description: "Chronological sequence of all user activity"
+      primary_artifacts:
+        - prefetch
+        - browser_history
+        - registry_run_keys
+      supporting_artifacts: []
+      typical_questions:
+        - "what happened"
+        - "timeline"
+        - "sequence of events"
+        - "activity on date"
+      analysis_approach: |
+        1. Collect all available artifacts
+        2. Sort chronologically
+        3. Identify activity clusters and gaps
+
+  artifact_correlations:
+    - name: "browser_launch_correlation"
+      description: "Browser execution should precede URL visits"
+      artifacts: [prefetch, browser_history]
+      expected_sequence:
+        - artifact: prefetch
+          event_type: "chrome.exe execution"
+        - artifact: browser_history
+          event_type: "first URL visit"
+          time_delta: "10-60 seconds"
+
+  anomaly_patterns:
+    suspicious_execution_paths:
+      severity: high
+      indicators:
+        - path_contains: ["TEMP", "Downloads", "AppData\\Local\\Temp"]
+      description: "Execution from temporary directories often indicates malware"
+    
+    off_hours_activity:
+      severity: medium
+      indicators:
+        - time_range: ["00:00-06:00", "22:00-23:59"]
+      description: "Activity outside business hours may indicate unauthorized access"
+
+  response_templates:
+    executive_summary: |
+      Analysis of {artifact_count} artifacts covering {time_range} revealed:
+      - {event_count} total events
+      - {anomaly_count} suspicious indicators
+    
+    timeline_event: |
+      [{timestamp}] {artifact_type}: {description}
+    
+    anomaly_report: |
+      ⚠️ {severity}: {anomaly_type}
+      Event: {event_description}
+      Reason: {reason}
