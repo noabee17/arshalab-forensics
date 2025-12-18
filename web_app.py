@@ -803,10 +803,57 @@ async def run_etl_pipeline(websocket: WebSocket, image_path: str, artifacts: lis
     """Run ETL pipeline with progress updates"""
     import queue
     import concurrent.futures
+    import requests
+    from pathlib import Path
 
     log_queue = queue.Queue()
 
     try:
+        # Check if this image was already processed
+        image_name = Path(image_path).name
+        es_url = "http://localhost:9200"
+
+        await websocket.send_json({
+            "type": "log",
+            "message": f"Checking if {image_name} was already analyzed...",
+            "level": "info"
+        })
+
+        # Search for existing data from this image
+        try:
+            r = requests.get(f"{es_url}/forensic-*/_count", timeout=5)
+            if r.status_code == 200:
+                total_records = r.json().get("count", 0)
+                if total_records > 0:
+                    # Data exists - ask user or just use it
+                    await websocket.send_json({
+                        "type": "log",
+                        "message": f"Found {total_records:,} existing records in database",
+                        "level": "success"
+                    })
+                    await websocket.send_json({
+                        "type": "log",
+                        "message": "Using existing data. Chat is ready!",
+                        "level": "success"
+                    })
+                    await websocket.send_json({
+                        "type": "complete",
+                        "case_id": f"existing_{image_name}",
+                        "message": "Using existing forensic data"
+                    })
+                    await websocket.send_json({
+                        "type": "status",
+                        "status": "complete",
+                        "message": "Ready"
+                    })
+                    return
+        except Exception as e:
+            await websocket.send_json({
+                "type": "log",
+                "message": f"Could not check existing data: {e}",
+                "level": "warning"
+            })
+
         await websocket.send_json({
             "type": "log",
             "message": f"Analyzing: {image_path}",

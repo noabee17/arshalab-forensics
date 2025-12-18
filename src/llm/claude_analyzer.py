@@ -29,17 +29,24 @@ class ClaudeAnalyzer:
     - get_case_stats: Get statistics about available data
     """
 
-    BASE_SYSTEM_PROMPT = """You are ArshaLab forensic analyst. Answer in user's language. Be concise.
+    BASE_SYSTEM_PROMPT = """You are ArshaLab - AI forensic assistant for Windows disk image analysis.
 
-RULES:
-- Be PROACTIVE: find something suspicious → dig deeper with more tools
-- Chain tool calls to build complete picture
-- Severity: [CRITICAL] malware/ransomware, [HIGH] temp executions/log clearing, [MEDIUM] failed logins, [LOW] info
+BEHAVIOR:
+- Answer in user's language
+- Be concise and precise
+- Use tools to search forensic data before answering
+- If suspicious activity found → investigate deeper automatically
 
-OUTPUT FORMAT:
-1. **Summary** - 1-2 sentences
-2. **Findings** - with severity tags, paths, timestamps
-3. **Next Steps** - specific search queries"""
+SEVERITY LEVELS:
+- CRITICAL: malware, ransomware, data exfiltration
+- HIGH: executions from TEMP, log clearing, new services
+- MEDIUM: failed logins, suspicious registry changes
+- LOW: informational findings
+
+RESPONSE FORMAT:
+**Summary**: 1-2 sentences
+**Findings**: bullet points with [SEVERITY], timestamps, paths
+**Recommendations**: next investigation steps (if needed)"""
 
     # Tool definitions for Claude
     TOOLS = [
@@ -143,11 +150,11 @@ OUTPUT FORMAT:
 
         self.client = anthropic.Anthropic(api_key=self.api_key)
         self.es_url = es_url
-        self.model = "claude-3-5-haiku-20241022"
+        self.model = "claude-sonnet-4-20250514"
         self.conversation_history: List[Dict] = []
         self.incident_context = incident_context
         self.session_id = session_id or "default"
-        self.max_history_messages = 20  # Increased for better context retention
+        self.max_history_messages = 10  # Keep history small to avoid rate limits
 
         # Build system prompt with incident context if provided
         self.system_prompt = self._build_system_prompt()
@@ -241,7 +248,7 @@ Focus your analysis on finding evidence related to this incident. Correlate time
             print(f"[ES Error] {e}")
         return []
 
-    def _tool_search_artifacts(self, query: str, artifact_type: str = "all", limit: int = 50) -> Dict:
+    def _tool_search_artifacts(self, query: str, artifact_type: str = "all", limit: int = 20) -> Dict:
         """Search across forensic artifacts - returns FULL records for investigation"""
         if artifact_type == "all":
             index = "forensic-*"
@@ -332,7 +339,7 @@ Focus your analysis on finding evidence related to this incident. Correlate time
             return matched[:50]  # All matches up to 50
         return files[:20]  # No matches, show first 20
 
-    def _tool_get_timeline(self, start_time: str = None, end_time: str = None, limit: int = 100) -> Dict:
+    def _tool_get_timeline(self, start_time: str = None, end_time: str = None, limit: int = 30) -> Dict:
         """Get timeline of events"""
         body = {
             "size": limit,
@@ -442,7 +449,7 @@ Focus your analysis on finding evidence related to this incident. Correlate time
             "registry_entries": registry_details
         }
 
-    def _tool_analyze_web(self, domain: str = None, limit: int = 100) -> Dict:
+    def _tool_analyze_web(self, domain: str = None, limit: int = 30) -> Dict:
         """Analyze web activity - returns FULL records for investigation"""
         results = self._es_search("forensic-browser", domain, limit)
 
